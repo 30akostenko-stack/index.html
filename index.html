@@ -1,0 +1,86 @@
+<!doctype html>
+function drawHand(ctx,x,y,size){ ctx.save(); ctx.translate(x,y); ctx.fillStyle='#f3d9d9'; ctx.beginPath(); ctx.moveTo(-size*0.4,0); ctx.quadraticCurveTo(-size*0.8,-size*0.2,-size*0.6,-size*0.5); ctx.quadraticCurveTo(-size*0.2,-size*0.9,size*0.1,-size*0.4); ctx.quadraticCurveTo(size*0.6,-size*0.1,size*0.45,size*0.35); ctx.quadraticCurveTo(size*0.2,size*0.9,-size*0.45,size*0.6); ctx.closePath(); ctx.fill(); ctx.restore(); }
+
+
+// ---- Game logic
+function startGame(){
+mazeSize = parseInt(sizeRange.value);
+cellSize = Math.floor(gameCanvas.width / mazeSize);
+maze = generateMaze(mazeSize);
+// player start at (1,1)
+player = {x:1,y:1};
+// hand starts at far corner
+hand = {x:mazeSize-2, y:mazeSize-2};
+// place cheeses
+totalCheese = Math.max(3, Math.floor((mazeSize*mazeSize)/70));
+cheeses = placeCheeses(maze, totalCheese);
+collected = 0; cheeseCountEl.textContent = totalCheese; collectedEl.textContent = collected; statusEl.textContent='В игре';
+// create sprite
+playerImg = makePlayerSprite(cellSize);
+// start loop
+if(gameInterval) clearInterval(gameInterval);
+enemySpeed = parseInt(speedRange.value); speedLabel.textContent = ['Очень медленно','Медленно','Средне','Быстро','Очень быстро'][Math.max(0,enemySpeed-1)];
+gameInterval = setInterval(tick, 120);
+}
+
+
+function tick(){
+// draw
+drawGame();
+// enemy moves based on speed
+enemyTick++;
+if(enemyTick % Math.max(1,6-enemySpeed) === 0){
+const path = findPath(maze, hand, player);
+if(path && path.length>0){ hand.x = path[0].x; hand.y = path[0].y; }
+}
+// check collisions
+for(let i=0;i<cheeses.length;i++){
+const c = cheeses[i]; if(c.x===player.x && c.y===player.y){ cheeses.splice(i,1); collected++; collectedEl.textContent=collected; break; }
+}
+if(collected>=totalCheese){ statusEl.textContent='Победа!'; clearInterval(gameInterval); gameInterval=null; }
+if(hand.x===player.x && hand.y===player.y){ statusEl.textContent='Проигрыш — рука поймала!'; clearInterval(gameInterval); gameInterval=null; }
+}
+
+
+// Controls
+window.addEventListener('keydown', e=>{
+if(!gameInterval) return; let dx=0, dy=0; if(e.key==='ArrowUp' || e.key==='w' || e.key==='W') dy=-1; if(e.key==='ArrowDown' || e.key==='s' || e.key==='S') dy=1; if(e.key==='ArrowLeft' || e.key==='a' || e.key==='A') dx=-1; if(e.key==='ArrowRight' || e.key==='d' || e.key==='D') dx=1;
+if(dx===0 && dy===0) return;
+const nx = player.x + dx, ny = player.y + dy;
+if(nx>=0 && nx<mazeSize && ny>=0 && ny<mazeSize && maze[ny][nx]===0){ player.x=nx; player.y=ny; drawGame(); }
+});
+
+
+// Test button: show sprite big
+testBtn.onclick = ()=>{
+const s = Math.min(160, Math.floor(gameCanvas.width/6));
+const img = makePlayerSprite(s);
+const w = window.open('', '_blank', 'noopener');
+if(!w) { alert('Откройте всплывающие окна'); return; }
+w.document.write('<title>Тест крысы</title>');
+w.document.body.style.background='#071022'; w.document.body.style.display='flex'; w.document.body.style.alignItems='center'; w.document.body.style.justifyContent='center';
+const i = w.document.createElement('img'); i.src=img.src; i.style.width=s+'px'; i.style.height=s+'px'; i.style.background='#071022'; i.style.borderRadius='12px'; w.document.body.appendChild(i);
+}
+
+
+startBtn.onclick = ()=>{ startGame(); }
+
+
+// UI updates
+sizeRange.oninput = ()=>{ sizeLabel.textContent = sizeRange.value + ' × ' + sizeRange.value; }
+speedRange.oninput = ()=>{ speedLabel.textContent = ['Очень медленно','Медленно','Средне','Быстро','Очень быстро'][speedRange.value-1]; }
+
+
+// init
+sizeLabel.textContent = mazeSize + ' × ' + mazeSize;
+speedLabel.textContent = ['Очень медленно','Медленно','Средне','Быстро','Очень быстро'][speedRange.value-1];
+
+
+// draw initial empty game
+maze = generateMaze(mazeSize);
+drawGame();
+
+
+</script>
+</body>
+</html>
